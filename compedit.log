@@ -1,0 +1,28 @@
+INFO    03/24/21 15:34:01 Set DecodesSettings source=/home/mike/opendcs_user/user.properties
+INFO    03/24/21 15:34:01 Set DecodesSettings source=/home/mike/opendcs_user/user.properties
+INFO    03/24/21 15:34:01 After parseArgs, DecodesSettings src file=/home/mike/opendcs_user/user.properties
+INFO    03/24/21 15:34:01 ===============================================
+INFO    03/24/21 15:34:01 compedit starting. OPENDCS 6.8 RC08 built on 20201222140047, pid=135528
+INFO    03/24/21 15:34:11 Calling '{ ? = call cwms_ccp_vpd.get_pred_session_office_code_v(?, ?) }' with schema=CCP and table=PLATFORMCONFIG
+INFO    03/24/21 15:34:11 Predicate for table PLATFORMCONFIG is 'db_office_code = 44'
+INFO    03/24/21 15:34:11 Connected to DECODES SQL database version 17
+INFO    03/24/21 15:34:11 CwmsSqlDatabaseIO decodesDbVersion=17
+INFO    03/24/21 15:34:11 ALTER SESSION SET TIME_ZONE = 'GMT'
+INFO    03/24/21 15:34:11 ALTER SESSION SET nls_date_format = 'yyyy-mm-dd hh24:mi:ss'
+INFO    03/24/21 15:34:11 ALTER SESSION SET nls_timestamp_format = 'yyyy-mm-dd hh24:mi:ss'
+INFO    03/24/21 15:34:11 ALTER SESSION SET nls_timestamp_tz_format = 'yyyy-mm-dd hh24:mi:ss'
+INFO    03/24/21 15:34:11 DECODES IF Connected to TSDB Version 17
+INFO    03/24/21 15:34:11 CwmsSqlDatabaseIO Connected to DECODES CWMS Database jdbc:oracle:thin:@localhost:1521/CWMSDEV as user q0hecman with officeID=SPK (dbOfficeCode=44)
+INFO    03/24/21 15:34:12 Connecting to time series database with class 'decodes.cwms.CwmsTimeSeriesDb'
+INFO    03/24/21 15:34:12 Calling '{ ? = call cwms_ccp_vpd.get_pred_session_office_code_v(?, ?) }' with schema=CCP and table=PLATFORMCONFIG
+INFO    03/24/21 15:34:12 Predicate for table PLATFORMCONFIG is 'db_office_code = 44'
+INFO    03/24/21 15:34:12 Connected to database server: Oracle Oracle Database 19c Enterprise Edition Release 19.0.0.0.0 - Production
+Version 19.3.0.0.0
+INFO    03/24/21 15:34:12 Connected to DECODES SQL database version 17
+INFO    03/24/21 15:34:12 CwmsTimeSeriesDb Connected to TSDB Version 17, Description: Installed Tue 17 Nov 2020 02:01:23 PM PST
+INFO    03/24/21 15:34:12 Connected to database server: Oracle Oracle Database 19c Enterprise Edition Release 19.0.0.0.0 - Production
+Version 19.3.0.0.0
+INFO    03/24/21 15:34:12 Connected to DECODES SQL database version 17
+INFO    03/24/21 15:34:12 CwmsTimeSeriesDb Connected to TSDB Version 17, Description: Installed Tue 17 Nov 2020 02:01:23 PM PST
+INFO    03/24/21 15:34:12 CwmsTimeSeriesDb Connected to CwmsTimeSeriesDb with app name 'compedit' appId=4151044, tsdbVersion=17
+INFO    03/24/21 15:34:12 CwmsTimeSeriesDb Connected to DECODES CWMS Database jdbc:oracle:thin:@localhost:1521/CWMSDEV as user q0hecman with officeID=SPK (dbOfficeCode=44)
