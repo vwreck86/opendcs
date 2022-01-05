@@ -505,6 +505,9 @@ public class DecodedMessage implements IDataCollection
 				currentTime.getCalendar().setTime(endTime);
 			else
 			{
+				// Set calEnd from EDL END_TIME_STAMP (if this is an EDL message) or from
+				// MESSAGE_TIME (for GOES and Iridium). 
+				// No data time should be after this time.
 				Variable v = rawMessage.getPM(EdlPMParser.END_TIME_STAMP);
 				if (v == null)
 					v = rawMessage.getPM(GoesPMParser.MESSAGE_TIME);
@@ -525,6 +528,16 @@ public class DecodedMessage implements IDataCollection
 				calCurrent.set(Calendar.YEAR, calEnd.get(Calendar.YEAR));
 				if (curStat == RecordedTimeStamp.TIME_OF_DAY)
 					calCurrent.set(Calendar.DAY_OF_YEAR, calEnd.get(Calendar.DAY_OF_YEAR));
+				
+				// MJM 20220105 calEnd should be an upper bound. There should be no future
+				// data without a complete time stamp. Thus if calCurrent is now > calEnd
+				// subtract a year.
+				if (calCurrent.getTime().after(calEnd.getTime()))
+				{
+					Logger.instance().info("Subtracting year because calCurrent is in the future.");
+					calCurrent.add(Calendar.YEAR, -1);
+				}
+				
 				currentTime.getCalendar().setTime(calCurrent.getTime());
 			}
 			currentTime.setComplete();
