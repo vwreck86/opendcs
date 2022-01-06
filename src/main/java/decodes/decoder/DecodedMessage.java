@@ -531,11 +531,19 @@ public class DecodedMessage implements IDataCollection
 				
 				// MJM 20220105 calEnd should be an upper bound. There should be no future
 				// data without a complete time stamp. Thus if calCurrent is now > calEnd
-				// subtract a year.
+				// subtract a day if we have time of day, or a year if we have time of year.
 				if (calCurrent.getTime().after(calEnd.getTime()))
 				{
-					Logger.instance().info("Subtracting year because calCurrent is in the future.");
-					calCurrent.add(Calendar.YEAR, -1);
+					if (curStat == RecordedTimeStamp.TIME_OF_DAY)
+					{
+						Logger.instance().info("Subtracting day because calCurrent is in the future.");
+						calCurrent.add(Calendar.DAY_OF_MONTH, -1);
+					}
+					else
+					{
+						Logger.instance().info("Subtracting year because calCurrent is in the future.");
+						calCurrent.add(Calendar.YEAR, -1);
+					}
 				}
 				
 				currentTime.getCalendar().setTime(calCurrent.getTime());
