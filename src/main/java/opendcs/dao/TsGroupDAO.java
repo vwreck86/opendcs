@@ -62,13 +62,12 @@
 */
 package opendcs.dao;
 
-import hec.util.TextUtil;
+import ilex.util.TextUtil;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Stack;
 
@@ -285,7 +284,7 @@ public class TsGroupDAO
 		{
 			TsGroup g = ci.next();
 			if (groupType == null || groupType.length() == 0
-			 || TextUtil.equalsIgnoreCase(groupType, g.getGroupType()))
+			 || TextUtil.strEqualIgnoreCase(groupType, g.getGroupType()))
 				ret.add(g);
 		}
 		return ret;

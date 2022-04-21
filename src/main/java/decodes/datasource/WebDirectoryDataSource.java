@@ -33,7 +33,7 @@ import decodes.db.InvalidDatabaseException;
 import decodes.db.NetworkList;
 import decodes.db.Platform;
 import decodes.util.PropertySpec;
-import hec.util.TextUtil;
+import ilex.util.TextUtil;
 import ilex.util.EnvExpander;
 import ilex.util.IDateFormat;
 import ilex.util.Logger;
@@ -418,7 +418,7 @@ Logger.instance().debug1("\tparsed fileTime=" + debugSdf.format(fileTime) + ", c
 				}
 				
 				// For the file nodes we want, the href attribute is the same as the anchor content.
-				if (TextUtil.equals(node.getTextContent(), hrefAttr.getNodeValue()))
+				if (TextUtil.strEqual(node.getTextContent(), hrefAttr.getNodeValue()))
 					fileList.add(node.getTextContent());
 //else
 //Logger.instance().debug1(module + " skipping anchor with href='" + hrefAttr.getNodeValue() 

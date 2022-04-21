@@ -4,10 +4,8 @@
 package decodes.decoder;
 
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
-import java.util.StringTokenizer;
 import java.util.Date;
 import java.util.TimeZone;
 
@@ -20,7 +18,6 @@ import ilex.var.Variable;
 import ilex.var.IFlags;
 
 import decodes.db.*;
-import hec.util.TextUtil;
 
 /**
 FieldOperation is a DecodesOperation that extracts and parses a field 

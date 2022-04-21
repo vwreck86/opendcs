@@ -11,25 +11,20 @@ import javax.swing.SwingUtilities;
 
 import org.xml.sax.SAXException;
 
-import hec.util.TextUtil;
+import ilex.util.TextUtil;
 import ilex.util.AuthException;
-import ilex.util.ByteUtil;
-import ilex.util.DesEncrypter;
 import ilex.util.EnvExpander;
 import ilex.util.Logger;
 import ilex.util.PasswordFile;
 import ilex.util.PasswordFileEntry;
-import ilex.gui.EventsPanel;
 import ilex.xml.XmlOutputStream;
 import lrgs.ldds.LddsClient;
-import lrgs.ldds.LddsMessage;
 import lrgs.ldds.ServerError;
 import lrgs.ldds.ProtocolError;
 import lrgs.statusxml.LrgsStatusSnapshotExt;
 import lrgs.statusxml.TopLevelXio;
 import lrgs.lrgsmon.DetailReportGenerator;
 import lrgs.rtstat.DdsClientIf;
-import lrgs.ldds.LddsClient;
 import lrgs.ldds.DdsUser;
 import lrgs.rtstat.RtStatPanel;
 import lrgs.lrgsmain.LrgsConfig;
@@ -135,7 +130,7 @@ public class MSLrgsConThread
 
 		if (conNum == 1)
 		{
-			if (!TextUtil.equalsIgnoreCase(lrgsHostName, cfg.Lrgs1HostName)
+			if (!TextUtil.strEqualIgnoreCase(lrgsHostName, cfg.Lrgs1HostName)
 			 || lrgsPort != cfg.Lrgs1Port
 			 || !lrgsUserName.equals(cfg.Lrgs1UserName)
 			 || !lrgsPassword.equals(cfg.Lrgs1Password))
@@ -146,7 +141,7 @@ public class MSLrgsConThread
 		}
 		else if (conNum == 2)
 		{
-			if (!TextUtil.equalsIgnoreCase(lrgsHostName, cfg.Lrgs2HostName)
+			if (!TextUtil.strEqualIgnoreCase(lrgsHostName, cfg.Lrgs2HostName)
 			 || lrgsPort != cfg.Lrgs2Port
 			 || !lrgsUserName.equals(cfg.Lrgs2UserName)
 			 || !lrgsPassword.equals(cfg.Lrgs2Password))
@@ -157,7 +152,7 @@ public class MSLrgsConThread
 		}
 		else if (conNum == 3)
 		{
-			if (!TextUtil.equalsIgnoreCase(lrgsHostName, cfg.Lrgs3HostName)
+			if (!TextUtil.strEqualIgnoreCase(lrgsHostName, cfg.Lrgs3HostName)
 			 || lrgsPort != cfg.Lrgs3Port
 			 || !lrgsUserName.equals(cfg.Lrgs3UserName)
 			 || !lrgsPassword.equals(cfg.Lrgs3Password))
@@ -168,7 +163,7 @@ public class MSLrgsConThread
 		}
 		else if (conNum == 4)
 		{
-			if (!TextUtil.equalsIgnoreCase(lrgsHostName, cfg.Lrgs4HostName)
+			if (!TextUtil.strEqualIgnoreCase(lrgsHostName, cfg.Lrgs4HostName)
 			 || lrgsPort != cfg.Lrgs4Port
 			 || !lrgsUserName.equals(cfg.Lrgs4UserName)
 			 || !lrgsPassword.equals(cfg.Lrgs4Password))
