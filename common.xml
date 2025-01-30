@@ -26,6 +26,7 @@
     <property name="src.test-integration.main.dir" value="src/test-integration"/>
     <property name="src.test-gui.main.dir" value="src/test-gui"/>
     <property name="src.test-lrgs.main.dir" value="src/test-lrgs"/>
+    <property name="annotations.main.dir" value="src/annotations"/>
     <property name="build.dir" value="build"/>
     <property name="reports.dir" value="${build.dir}/reports"/>
     <property name="build.lib" value="${build.dir}/lib"/>
@@ -212,8 +213,8 @@
     </target>
 
     <target name="resolve.build" description="--> retreive dependencies with ivy" depends="check.ivy.build,resolve,resolve.build.real,resolve.build.cached">
-        <taskdef resource="net/sf/antcontrib/antcontrib.properties" classpathref="build.classpath"/>
         <taskdef resource="net/sf/antcontrib/antlib.xml" classpathref="build.classpath"/>
+        <typedef name="islessthan" classname="net.sf.antcontrib.logic.condition.IsLessThan" classpathref="build.classpath"/>
 
         <taskdef resource="com/puppycrawl/tools/checkstyle/ant/checkstyle-ant-task.properties"
                  classpathref="build.classpath"/>
@@ -225,6 +226,9 @@
 
         <taskdef uri="antlib:org.jacoco.ant" resource="org/jacoco/ant/antlib.xml"
                  classpathref="build.classpath"/>
+
+        <taskdef name="groovy" classname="org.codehaus.groovy.ant.Groovy" 
+                 classpathref="groovy.classpath"/>
 
         <mkdir dir="${coverage.dir}"/>
     </target>
@@ -262,6 +266,10 @@
                          templateFile="config/pom.template">
                 <mapping conf="default" scope="compile"/>
                 <mapping conf="runtime" scope="runtime"/>
+            </ivy:makepom>
+            <ivy:makepom ivyfile="build/ivy.xml" pomfile="build/lib/opendcs-annotations.pom" conf="annotation_runtime"
+                         artifactName="opendcs-annotations"
+                         templateFile="config/annotations.pom.template">
             </ivy:makepom>
         </sequential>
     </macrodef>

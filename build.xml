@@ -40,13 +40,30 @@ NOTE at this time jdk8 must be used as there is still a dependency on tools.jar
         <delete dir="combined-src"/>
         <antcall target="docs.clean"/>
     </target>
-    <target name="compile" depends="prepare,common.resolve,common.resolve.build" description="Compiles all source code.">
+    <target name="compile-annotations" depends="prepare,common.resolve,common.resolve.build" description="Annotations and Annotation processors">
+        <compile-java outputDir="${build.dir}/annotations"
+                      srcDir="${annotations.main.dir}"
+                      outputname="annotations"
+                    >
+            <classpaths>
+                <path refid="build.classpath"/>
+            </classpaths>
+        </compile-java>
+        <property name="annotations.jar" value="${build.dir}/lib/opendcs-annotations.jar"/>
+        <jar jarfile="${annotations.jar}"
+             update="true">
+            <fileset dir="${annotations.resources}"/>
+            <fileset dir="${annotations.classes}"/>
+        </jar>
+    </target>
+    <target name="compile" depends="prepare,common.resolve,common.resolve.build,compile-annotations" description="Compiles all source code.">
         <compile-java outputDir="${build.dir}/main"
                  srcDir="${src.main.dir}"
                  outputName="opendcs"
                  >
             <classpaths>
                 <path refid="runtime.classpath"/>
+                <pathelement location="${annotations.jar}"/>
             </classpaths>
         </compile-java>
     </target>
@@ -268,9 +285,23 @@ more information about each.
                  author="true"
                  version="true"
                  use="true"
-                 windowTitle="OpenDCS API"
-                 classpathref="runtime.classpath">
+                 windowTitle="OpenDCS API">
+            <classpath>
+                <path refid="runtime.classpath"/>
+                <pathelement path="${annotations.classes}"/>
+            </classpath>
             <fileset dir="${src.dir}"/>
+            <tag name="todo" scope="all" description="To do:"/>
+        </javadoc>
+        <javadoc destdir="${build.dir}/javadocs-annotations"
+                 author="true"
+                 version="true"
+                 use="true"
+                 windowTitle="OpenDCS API Annotations">
+            <classpath>
+                <pathelement path="${annotations.classes}"/>
+            </classpath>
+            <fileset dir="${annotations.main.dir}"/>
             <tag name="todo" scope="all" description="To do:"/>
         </javadoc>
     </target>
@@ -280,11 +311,22 @@ more information about each.
         <mkdir dir="${build.release.dir}"/>
         <copy file="${dist.jar}" tofile="${build.release.dir}/opendcs-${version}.jar"/>
         <copy file="${build.dir}/lib/opendcs.pom" tofile="${build.release.dir}/opendcs-${version}.pom"/>
+        <!-- main bundle -->
         <jar jarfile="${build.release.dir}/opendcs-${version}-javadoc.jar"
              basedir="${build.dir}/javadocs"
              update="true"/>
         <jar jarfile="${build.release.dir}/opendcs-${version}-sources.jar">
             <fileset dir="${src.dir}" includes="**/*.java"/>
+        </jar>
+        <!-- annotations bundle -->
+        <property name="annotations.base" value="opendcs-annotations-${version}"/>
+        <copy file="${annotations.jar}" tofile="${build.release.dir}/${annotations.base}.jar"/>
+        <copy file="${build.dir}/lib/opendcs-annotations.pom" tofile="${build.release.dir}/${annotations.base}.pom"/>
+        <jar jarfile="${build.release.dir}/${annotations.base}-javadoc.jar"
+             basedir="${build.dir}/javadocs-annotations"
+             update="true"/>
+        <jar jarfile="${build.release.dir}/${annotations.base}-sources.jar">
+            <fileset dir="${annotations.main.dir}"/>
         </jar>
         <available property="have.gpg" file="gpg" filepath="${PATH}"/>
         <if>
@@ -300,8 +342,16 @@ more information about each.
                 <gpgsignfile target="opendcs-${version}.jar"/>
                 <gpgsignfile target="opendcs-${version}-javadoc.jar"/>
                 <gpgsignfile target="opendcs-${version}-sources.jar"/>
-                <jar jarfile="${build.release.dir}/bundle.jar">
-                    <fileset dir="${build.release.dir}" excludes="bundle.jar"/>
+                <jar jarfile="${build.release.dir}/bundle-core.jar">
+                    <fileset dir="${build.release.dir}" excludes="bundle*,opendcs-annotations*"/>
+                </jar>
+
+                <gpgsignfile target="${annotations.base}.jar"/>
+                <gpgsignfile target="${annotations.base}-sources.jar"/>
+                <gpgsignfile target="${annotations.base}-javadoc.jar"/>
+                <gpgsignfile target="${annotations.base}.pom"/>
+                <jar jarfile="${build.release.dir}/bundle-annotations.jar">
+                    <fileset dir="${build.release.dir}" excludes="bundle*,opendcs-${version}*"/>
                 </jar>
             </else>
         </if>
@@ -355,17 +405,9 @@ more information about each.
             </fileset>
         </copy>
         <copy todir="stage/dep">
-            <mappedresources enablemultiplemappings="false">
-                <!-- tweak to load at end as LoboBrowser here is including it's own jooq libaries for some reason breaking CWMS use-->
-                <restrict>
-                    <path refid="runtime.classpath"/>
-                    <type type="file"/>
-                </restrict>
-                <chainedmapper>
-                    <flattenmapper/>
-                    <regexpmapper from="^(Cobra-1.0.2.jar|LoboBrowser-1.0.0.jar)" to="zzz\1"/>
-                </chainedmapper>
-            </mappedresources>
+            <fileset dir="build/lib">
+                <include name="opendcs-annotations.jar"/>
+            </fileset>
             <mappedresources enablemultiplemappings="false">
                 <restrict>
                     <path refid="runtime.classpath"/>
@@ -373,7 +415,6 @@ more information about each.
                 </restrict>
                 <chainedmapper>
                     <flattenmapper/>
-                    <regexpmapper from="^(?!Cobra-1.0.2.jar|LoboBrowser-1.0.0.jar)(.*)" to="\1"/>
                 </chainedmapper>
             </mappedresources>
         </copy>
@@ -480,22 +521,7 @@ more information about each.
             <fileset dir="${project.dir}/python"/>
         </copy>
     </target>
-    <!-- same as package, but remove libraries not needed by USACE or USBR -->
-    <target name="nonfed" depends="stage">
-        <delete file="stage/dep/jep-2.4.1.jar"/>
-        <delete file="stage/dep/jython-2.7.2.jar"/>
-        <delete file="stage/dep/xmlparserv2-12.1.0.2.jar"/>
-        <delete file="stage/dep/Cobra.jar"/>
-        <!-- Invokes izpack to build installable package with defaults for CWMS -->
-        <izpack input="${project.dir}/izpack/opendcs-install.xml"
-                output="stage/opendcs-nf-${version}.jar"
-                installerType="standard"
-                basedir="stage"
-                izPackDir="${izpack.dir}">
-            <property name="version" value="${version}"/>
-            <property name="hdb.preselect" value="no"/>
-        </izpack>
-    </target>
+
     <!-- same as nonfed, but includes OpenTSDB and computation files -->
     <target name="opendcs" depends="stage,common.izpack.dependencies">
         <!-- Invokes izpack to build installable package with defaults for CWMS -->
@@ -555,14 +581,13 @@ more information about each.
 
     <!-- these intentionally depend on .real of the resolve tasks as if the user
          is asking for these file to be recreate something is likely wrong. -->
-    <target name="eclipse-ide-files" depends="prepare,common.resolve.real,common.resolve.build.real">
+    <target name="eclipse-ide-files" depends="prepare,common.resolve,common.resolve.build">
         <!--
             Derived Directly from Mark O'Connors stackoverflow answer. Thank you for
             coming up with this!
             https://stackoverflow.com/a/11617592
         -->
-        <!-- resolve -->
-        <taskdef name="groovy" classname="org.codehaus.groovy.ant.Groovy" classpathref="groovy.classpath"/>
+        
         <groovy>
             import groovy.xml.MarkupBuilder
             //
@@ -605,6 +630,8 @@ more information about each.
             new File(".classpath").withWriter { writer ->
                 def xml = new MarkupBuilder(writer)
                 xml.classpath() {
+                    classpathentry(kind:"src",    path:"src/annotations/java", output: "bin/annotations")
+                    classpathentry(kind:"src",    path:"src/annotations/resources", output: "bin/annotations")
                     classpathentry(kind:"src",    path:"src/main/java", output: "bin/main")
                     classpathentry(kind:"src",    path:"src/main/resources", output: "bin/main")
                     classpathentry(kind:"src",    path:"src/test/java", output: "bin/test") {
@@ -752,6 +779,58 @@ more information about each.
             </fileset>
         </chmod>
         <mkdir dir="${build.dir}/run"/>
+        <if>
+            <isset property="opendcs.profile"/>
+            <then>
+                <basename property="opendcs.profile.name" file="${opendcs.profile}" suffix=".profile"/>
+            </then>
+            <else>
+                <property name="opendcs.profile.name" value="default"/>
+            </else>
+        </if>
+        <if>
+            <and>
+                <islessthan arg1="${java.specification.version}" arg2="11"/>
+                <isset property="opendcs.jfr"/>
+            </and>
+            <then>
+                <property name="jfrOpts" value=""/>
+                <echo level="warning">Can only run Java Flight recorder on JDK 11 or above</echo>
+            </then>
+            <elseif>
+                <isset property="opendcs.jfr"/>
+                <then>
+                    <property name="can_jfr" value="true"/>
+                    <property name="jfrOpts"
+                                value="-XX:StartFlightRecording=disk=true,dumponexit=true,filename=${build.dir}/run/${opendcs.app}.${opendcs.profile.name}.recording.jfr,settings=profile"/>
+                </then>
+            </elseif>
+            <else>
+                <property name="jfrOpts" value=""/>
+            </else>
+        </if>
+
+        <condition property="debugOpts"
+                   value="-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=${debugPort}"
+                   else="">
+            <isset property="debugPort"/>
+        </condition>
+
+        <condition property="lang"
+                   value="-Duser.language=${opendcs.lang}"
+                   else="">
+            <isset property="opendcs.lang"/>
+        </condition>
+
+        <condition property="extra_opts"
+                  value="${opendcs.app.decj}"
+                  else="">
+            <isset property="opendcs.app.decj"/>
+        </condition>
+
+        <property name="decj_opts" value="${debugOpts} ${jfrOpts} ${lang} ${extra_opts}"/>
+        <echo message="with opts: ${decj_opts}"/>
+
         <exec executable="${stage.dir}/bin/${opendcs.app}" osfamily="unix">
             <env key="DCSTOOL_HOME" value="${stage.absolute.dir}"/>
             <env key="DECODES_INSTALL_DIR" value="${stage.absolute.dir}"/>
@@ -759,9 +838,8 @@ more information about each.
             <arg value="-l"/><arg value="/dev/stdout"/>
             <arg if:set="opendcs.profile" value="-P"/>
             <arg if:set="opendcs.profile" value="${opendcs.profile}"/>
-            <env if:set="debugPort"
-                 key="DECJ_OPTS"
-                 value="-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=${debugPort}"/>
+            <arg if:set="opendcs.arg" value="${opendcs.arg}"/>
+            <env key="DECJ_OPTS" value="${decj_opts}"/>
         </exec>
         <exec executable="${stage.absolute.dir}/bin/${opendcs.app}.bat" osfamily="windows" vmlauncher="false">
             <env key="DCSTOOL_HOME" value="${stage.absolute.dir}"/>
@@ -770,9 +848,8 @@ more information about each.
             <arg value="-l"/><arg value="CON:"/>
             <arg if:set="opendcs.profile" value="-P"/>
             <arg if:set="opendcs.profile" value="${opendcs.profile}"/>
-            <env if:set="debugPort"
-                 key="DECJ_OPTS"
-                 value="-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=${debugPort}"/>
+            <arg if:set="opendcs.arg" value="${opendcs.arg}"/>
+            <env key="DECJ_OPTS" value="${decj_opts}"/>
         </exec>
     </target>
 </project>

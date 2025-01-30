@@ -41,8 +41,11 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+
+import org.opendcs.utils.sql.SqlSettings;
 
 import decodes.db.Constants;
 import decodes.sql.DbKey;
@@ -170,7 +173,7 @@ public class DaoBase
         }
 
 
-        return new WrappedConnection(myCon, c -> {});
+        return new WrappedConnection(myCon, c -> {}, SqlSettings.TRACE_CONNECTIONS);
     }
 
     /**
@@ -400,9 +403,11 @@ public class DaoBase
     }
 
     /**
-     * Provides connection to consumer, closing/return the connection when done.
+     * Provides connection to consumer, closing/return the connection when done unless.
+     * Connection was manually set. As would happen with a transaction.
      *
-     * NOTE: Thread safe IF the TimeseriesDB implementation supports connection pooling.
+     * NOTE: Thread safe IF the TimeseriesDB implementation supports connection pooling AND
+     *  you aren't calling in parallel from an "inTransaction" handler.
      * @param consumer @see opendcs.util.functional.ConnectionConsumer
      * @throws SQLException
      */
@@ -411,14 +416,14 @@ public class DaoBase
         Connection conn = null;
         try
         {
-            conn = db.getConnection();
+            conn = this.getConnection();
             consumer.accept(conn);
         }
         finally
         {
-            if( conn != null)
+            if(conn != null && !this.conSetManually)
             {
-                db.freeConnection(conn);
+                conn.close();
             }
         }
     }
@@ -582,7 +587,7 @@ public class DaoBase
      * @param batchSize How many elements of the list to execute for each batch.
      * @throws SQLException
      */
-    public <ValueType> void doModifyBatch(String query, ThrowingFunction<ValueType, Object[] , SQLException> bindingFunction, List<ValueType> values, int batchSize) throws SQLException
+    public <ValueType> void doModifyBatch(String query, ThrowingFunction<ValueType, Object[] , SQLException> bindingFunction, Collection<ValueType> values, int batchSize) throws SQLException
     {
         withStatement(query, (stmt) -> {
             int count = 0;
@@ -667,7 +672,7 @@ public class DaoBase
      * @param query query that may return more than 1 result
      * @param consumer function to take the ResultSet and process it into a Object of type R (or null)
      * @param parameters variables to bind into the query.
-     * @return
+     * @return value provided by the consumer or null
      * @throws SQLException
      */
     public <R> R getFirstResult(String query, ResultSetFunction<R> consumer, Object... parameters) throws SQLException
@@ -690,6 +695,30 @@ public class DaoBase
         else
         {
             return null;
+        }
+    }
+
+    /**
+     * A query that may return more than one result; but we only care about the first one.
+     *
+     * @param <R> The return type
+     * @param query query that may return more than 1 result
+     * @param consumer function to take the ResultSet and process it into a Object of type R (or null)
+     * @param defaultvalue value to provide if no query results
+     * @param parameters variables to bind into the query.
+     * @return The value from the query, or the defaultValue if the query returns nothing
+     * @throws SQLException
+     */
+    public <R> R getFirstResultOr(String query, ResultSetFunction<R> consumer, R defaultValue, Object... parameters) throws SQLException
+    {
+        R value = getFirstResult(query, consumer, parameters);
+        if (value == null)
+        {
+            return defaultValue;
+        }
+        else
+        {
+            return value;
         }
     }
 

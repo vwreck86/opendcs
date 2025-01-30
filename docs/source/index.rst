@@ -12,10 +12,19 @@ Documentation Outline
 ---------------------
 OpenDCS documentation is currently divided into four sections:
 
+#. Staying Involved: Intended for users of all levels
 #. Getting Started: Intended for new users
 #. Resources: Intended for intermediate users
 #. Developer Documentation: Intended for advanced users or developers
 #. Legacy Documentation and References: Intended for users familiar with the content in legacy PDF documentation
+
+The **Staying Involved** part of this documentation is intended
+for users of all levels.  This section contains information
+about the OpenDCS Project.  
+
+* How to sign up for notifications
+* How to get involved with development
+* Information about the GitHub repository
 
 The **Getting Started** part of this documentation is intended
 for new users.  Once reviewed one should be familiar with the 
@@ -70,14 +79,21 @@ Reminder - legacy PDFs are no longer being updated.
 
 .. toctree::
    :maxdepth: 1
+   :caption: Staying Involved
+   
+   Involvement <./involved-opendcs.rst>
+   
+.. toctree::
+   :maxdepth: 1
    :caption: Getting Started
    
    Software Set-Up <./start-software.rst>
+   Setup LRGS <./start-lrgs.rst>
    Time Series - Intro <./start-timeseries.rst>
    Routing Spec - Intro<./start-routingspec.rst>
    DECODING - Intro<./start-decoding.rst>
    Computations - Intro <./start-computations.rst>
-   Screening - Intro <./start-screening.rst>
+   Screening - Intro <./start-screening.rst>   
    
 .. toctree::
    :maxdepth: 1

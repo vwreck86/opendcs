@@ -22,6 +22,7 @@ import decodes.db.RoutingSpecList;
 import decodes.db.ScheduleEntry;
 import decodes.tsdb.DbIoException;
 import opendcs.dao.DaoBase;
+import opendcs.dao.DaoHelper;
 
 /**
  * This class handles reading and writing the RoutingSpecLists from/to
@@ -92,7 +93,7 @@ public class RoutingSpecListIO extends SqlDbObjIo
     {
         log.debug("Reading RoutingSpecs...");
 
-        Statement stmt = createStatement();
+        
 
         String q = "SELECT id, name, dataSourceId, enableEquations, " +
                    "usePerformanceMeasurements, outputFormat, outputTimeZone, " +
@@ -100,87 +101,88 @@ public class RoutingSpecListIO extends SqlDbObjIo
                    "consumerType, consumerArg, lastModifyTime, isProduction " +
                    "FROM RoutingSpec";
 
-        ResultSet resultSet = stmt.executeQuery( q );
-
-        while (resultSet != null && resultSet.next())
+        try (Statement stmt = createStatement(); 
+             ResultSet resultSet = stmt.executeQuery( q );
+        )
         {
-            DbKey id = DbKey.createDbKey(resultSet, 1);
-            String name = resultSet.getString(2);
-
-            RoutingSpec routingSpec = new RoutingSpec(name);
-
-            routingSpec.setId(id);
-
-            DbKey dataSourceId = DbKey.createDbKey(resultSet, 3);
-            routingSpec.dataSource = null;
-            try
+            while (resultSet != null && resultSet.next())
             {
-                DataSource ds = _dbio._dataSourceListIO.getDS(rsList, dataSourceId);
-                routingSpec.dataSource = ds;
+                DbKey id = DbKey.createDbKey(resultSet, 1);
+                String name = resultSet.getString(2);
+
+                RoutingSpec routingSpec = new RoutingSpec(name);
+
+                routingSpec.setId(id);
+
+                DbKey dataSourceId = DbKey.createDbKey(resultSet, 3);
+                routingSpec.dataSource = null;
+                try
+                {
+                    DataSource ds = _dbio._dataSourceListIO.getDS(rsList, dataSourceId);
+                    routingSpec.dataSource = ds;
+                }
+                catch(DatabaseException ex)
+                {
+                    log.atWarn()
+                    .setCause(ex)
+                    .log(
+                        "Invalid dataSourceId {} in routing spec '{}'"
+                        + " -- valid data source must be assigned before this"
+                        + " spec can be used: ",dataSourceId, name );
+                }
+
+                routingSpec.enableEquations =
+                    TextUtil.str2boolean(resultSet.getString(4));
+                routingSpec.usePerformanceMeasurements =
+                    TextUtil.str2boolean(resultSet.getString(5));
+
+                routingSpec.outputFormat = resultSet.getString(6);
+
+                routingSpec.outputTimeZoneAbbr = resultSet.getString(7);
+
+                routingSpec.presentationGroupName = resultSet.getString(8);
+
+                routingSpec.sinceTime = resultSet.getString(9);
+                routingSpec.untilTime = resultSet.getString(10);
+
+                routingSpec.consumerType = resultSet.getString(11);
+
+                routingSpec.consumerArg = resultSet.getString(12);
+                if (routingSpec.consumerArg == null)
+                {
+                    routingSpec.consumerArg = "";
+                }
+
+                routingSpec.lastModifyTime = getTimeStamp(resultSet, 13, routingSpec.lastModifyTime);
+
+                routingSpec.isProduction = TextUtil.str2boolean(resultSet.getString(14));
+
+                // Get the properties associated with this object.
+                try
+                {
+                    propsDao.readProperties(
+                        "RoutingSpecProperty", "RoutingSpecId",
+                        routingSpec.getId(), routingSpec.getProperties());
+                }
+                catch (DbIoException ex)
+                {
+                    throw new DatabaseException("Unable to read routing spec.", ex);
+                }
+
+                // Get the NetworkLits associated with this database.
+
+                read_RS_NL(routingSpec);
+
+                rsList.add(routingSpec);
             }
-            catch(DatabaseException ex)
-            {
-                log.atWarn()
-                   .setCause(ex)
-                   .log(
-                      "Invalid dataSourceId {} in routing spec '{}'"
-                    + " -- valid data source must be assigned before this"
-                    + " spec can be used: ",dataSourceId, name );
-            }
-
-            routingSpec.enableEquations =
-                TextUtil.str2boolean(resultSet.getString(4));
-            routingSpec.usePerformanceMeasurements =
-                TextUtil.str2boolean(resultSet.getString(5));
-
-            routingSpec.outputFormat = resultSet.getString(6);
-
-            routingSpec.outputTimeZoneAbbr = resultSet.getString(7);
-
-            routingSpec.presentationGroupName = resultSet.getString(8);
-
-            routingSpec.sinceTime = resultSet.getString(9);
-            routingSpec.untilTime = resultSet.getString(10);
-
-            routingSpec.consumerType = resultSet.getString(11);
-
-            routingSpec.consumerArg = resultSet.getString(12);
-            if (routingSpec.consumerArg == null)
-            {
-                routingSpec.consumerArg = "";
-            }
-
-            routingSpec.lastModifyTime = getTimeStamp(resultSet, 13, routingSpec.lastModifyTime);
-
-            routingSpec.isProduction = TextUtil.str2boolean(resultSet.getString(14));
-
-            // Get the properties associated with this object.
-            try
-            {
-                propsDao.readProperties(
-                    "RoutingSpecProperty", "RoutingSpecId",
-                    routingSpec.getId(), routingSpec.getProperties());
-            }
-            catch (DbIoException ex)
-            {
-                throw new DatabaseException("Unable to read routing spec.", ex);
-            }
-
-            // Get the NetworkLits associated with this database.
-
-            read_RS_NL(routingSpec);
-
-            rsList.add(routingSpec);
         }
-        stmt.close();
     }
 
     /**
       Reads an existing routing spec into memory.
       The passed object is filled-in.
     */
-    public void readRoutingSpec(RoutingSpec routingSpec)
-        throws DatabaseException
+    public void readRoutingSpec(RoutingSpec routingSpec) throws DatabaseException
     {
         if (!routingSpec.idIsSet()
          && routingSpec.getName() != null && routingSpec.getName().length() > 0)
@@ -350,21 +352,30 @@ public class RoutingSpecListIO extends SqlDbObjIo
               "IsProduction = " + sqlString(rs.isProduction) + " " +
             "WHERE ID = " + id;
 
-        executeUpdate(q);
+        
 
-        try
+        try (PropertiesDAI propsDao = _dbio.makePropertiesDAO())
         {
-            propsDao.writeProperties("RoutingSpecProperty", "RoutingSpecId",
-                                     rs.getId(), rs.getProperties());
+            propsDao.inTransaction(dao ->
+            {
+                try(PropertiesDAI propsDao2 = _dbio.makePropertiesDAO())
+                {
+                    propsDao2.inTransactionOf(dao);
+                    dao.doModify(q, new Object[0]);
+                    propsDao2.writeProperties("RoutingSpecProperty", "RoutingSpecId",
+                                            rs.getId(), rs.getProperties());
+                    // Update the RoutingSpecNetworkLists
+                    delete_RS_NL(dao, rs);
+                    insert_RS_NL(dao, rs);
+                }
+            });
         }
-        catch (DbIoException ex)
+        catch (Exception ex)
         {
             throw new DatabaseException("Unable to update routing spec.", ex);
         }
 
-        // Update the RoutingSpecNetworkLists
-        delete_RS_NL(rs);
-        insert_RS_NL(rs);
+        
     }
 
     /**
@@ -401,17 +412,25 @@ public class RoutingSpecListIO extends SqlDbObjIo
               sqlString(rs.isProduction) +
             ")";
 
-        executeUpdate(q);
 
-        // Now insert the RoutingSpecNetworkList records
-        insert_RS_NL(rs);
 
-        try
+        try (PropertiesDAI propsDao = _dbio.makePropertiesDAO())
         {
-            propsDao.writeProperties("RoutingSpecProperty", "RoutingSpecId",
-                                     rs.getId(), rs.getProperties());
+            propsDao.inTransaction(dao ->
+            {
+                try(PropertiesDAI propsDao2 = _dbio.makePropertiesDAO())
+                {
+                    propsDao2.inTransactionOf(dao);
+                    dao.doModify(q, new Object[0]);
+                    log.info("Routing Spec Saved!!!!!!!!!!!!!");
+                    // Now insert the RoutingSpecNetworkList records
+                    insert_RS_NL(dao, rs);
+                    propsDao2.writeProperties("RoutingSpecProperty", "RoutingSpecId",
+                                            rs.getId(), rs.getProperties());
+                }
+            });
         }
-        catch (DbIoException ex)
+        catch (Exception ex)
         {
             throw new DatabaseException("Unable to insert routing spec", ex);
         }
@@ -421,25 +440,15 @@ public class RoutingSpecListIO extends SqlDbObjIo
     * Insert the RoutingSpecNetworkList records corresponding to a new
     * RoutingSpec.
     */
-    private void insert_RS_NL(RoutingSpec rs)
-        throws DatabaseException, SQLException
+    private void insert_RS_NL(DaoBase dao, RoutingSpec rs) throws DatabaseException, SQLException
     {
-        DbKey rsId = rs.getId();
+        final DbKey rsId = rs.getId();
 
-        for(Iterator<String> it = rs.networkListNames.iterator(); it.hasNext(); )
+        String q = "INSERT INTO RoutingSpecNetworkList VALUES (?,?)";
+        dao.doModifyBatch(q, v ->
         {
-            String nm = it.next();
-            if (nm == null)
-            {
-                continue; // shouldn't happen.
-            }
-            String q =
-                "INSERT INTO RoutingSpecNetworkList VALUES (" +
-                  rsId + ", " + sqlReqString(nm) +
-                ")";
-
-            executeUpdate(q);
-        }
+            return new Object[]{rsId, v};
+        }, rs.networkListNames, 200);
     }
 
     /**
@@ -456,72 +465,81 @@ public class RoutingSpecListIO extends SqlDbObjIo
     {
         DbKey id = rs.getId();
 
-        // Do the related tables first
-        delete_RS_NL(rs);
-
-        try (ScheduleEntryDAI seDAO = _dbio.makeScheduleEntryDAO();)
+        try (PropertiesDAI propsDAO = _dbio.makePropertiesDAO();
+             ScheduleEntryDAI seDAO = _dbio.makeScheduleEntryDAO();)
         {
-            propsDao.deleteProperties("RoutingSpecProperty", "RoutingSpecId", id);
-            if (seDAO != null)
+            propsDAO.inTransaction(dao -> 
             {
-                ArrayList<ScheduleEntry> seList = seDAO.listScheduleEntries(null);
-                for(ScheduleEntry se : seList)
+                try(PropertiesDAI props2 = _dbio.makePropertiesDAO())
                 {
-                    if (se.getRoutingSpecId().equals(rs.getId()))
+                    props2.inTransactionOf(dao);
+                    // Do the related tables first
+                    delete_RS_NL(dao, rs);
+                    props2.deleteProperties("RoutingSpecProperty", "RoutingSpecId", id);
+                    if (seDAO != null)
                     {
-                        seDAO.deleteScheduleEntry(se);
+                        seDAO.inTransactionOf(dao);
+                        ArrayList<ScheduleEntry> seList = seDAO.listScheduleEntries(null);
+                        for(ScheduleEntry se : seList)
+                        {
+                            if (se.getRoutingSpecId().equals(rs.getId()))
+                            {
+                                seDAO.deleteScheduleEntry(se);
+                            }
+                        }
                     }
+
+                    // Finally, do the main RoutingSpec table
+                    String q = "DELETE FROM RoutingSpec WHERE ID = ?";
+                    dao.doModify(q, id);
                 }
-            }
+            });
         }
-        catch (DbIoException ex)
+        catch (Exception ex)
         {
             throw new DatabaseException("Unable to delete routing spec entries", ex);
         }
-
-        // Finally, do the main RoutingSpec table
-        String q = "DELETE FROM RoutingSpec WHERE ID = " + id;
-        executeUpdate(q);
     }
 
     /**
     * Deletes the RoutingSpecNetworkList records corresponding to a
     * RoutingSpec.
     */
-    private void delete_RS_NL(RoutingSpec rs)
+    private void delete_RS_NL(DaoBase dao, RoutingSpec rs)
         throws DatabaseException, SQLException
     {
         DbKey id = rs.getId();
 
         String q = "DELETE FROM RoutingSpecNetworkList " +
-                   "WHERE RoutingSpecId = " + id;
-        tryUpdate(q);
+                   "WHERE RoutingSpecId = ?";
+        dao.doModify(q, id);
     }
 
     private DbKey name2id(String name)
         throws SQLException
     {
-        try (Statement stmt = createStatement();
-             ResultSet rs = stmt.executeQuery(
-                "SELECT id FROM RoutingSpec where lower(name) = "
-                + sqlReqString(name.toLowerCase()));)
+        final String q = "SELECT id FROM RoutingSpec where lower(name) = lower(?)";
+        try (Connection conn = connection();
+             DaoHelper dao = new DaoHelper(_dbio, "routingspeclist", conn);
+            )
         {
-            DbKey ret = Constants.undefinedId;
-            if (rs != null && rs.next())
-            {
-                ret = DbKey.createDbKey(rs, 1);
-            }
-
-            return ret;
+            return name2id(dao, name);
         }
     }
 
+    private DbKey name2id(DaoBase dao, String name)
+        throws SQLException
+    {
+        final String q = "SELECT id FROM RoutingSpec where lower(name) = lower(?)";
+        return dao.getSingleResultOr(q, rs ->DbKey.createDbKey(rs, "id"), Constants.undefinedId, name);
+    }
     /**
       Returns the last-modify-time for this routing spec in the database.
     */
     public Date getLMT(RoutingSpec spec)
     {
-        try (Statement stmt = createStatement();)
+        try (Connection conn = connection();
+             DaoHelper dao = new DaoHelper(this._dbio, "routinspeclist", conn))
         {
             DbKey id = spec.getId();
             if (id.isNull())
@@ -534,20 +552,8 @@ public class RoutingSpecListIO extends SqlDbObjIo
                 catch(DatabaseException ex) {} // guaranteed not to happen.
             }
 
-            String q =
-                "SELECT lastModifyTime FROM RoutingSpec WHERE id = " + id;
-            try(ResultSet rs = stmt.executeQuery(q);)
-            {
-                // Should be only 1 record returned.
-                if (rs == null || !rs.next())
-                {
-                    log.warn("Cannot get SQL LMT for Routing Spec '{}', id={}",spec.getName(), spec.getId());
-                    return null;
-                }
-
-                Date ret = getTimeStamp(rs, 1, (Date)null);
-                return ret;
-            }
+            String q ="SELECT lastModifyTime FROM RoutingSpec WHERE id = ?" + id;
+            return dao.getSingleResultOr(q, rs -> getTimeStamp(rs, 1, null), null, id);
         }
         catch(SQLException ex)
         {
